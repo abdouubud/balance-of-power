@@ -1107,6 +1107,7 @@
     }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 </head>
 
 <body>
@@ -1958,6 +1959,7 @@
         <div id="generating-note" style="margin-top:6px;font-size:12px;color:var(--color-mid-1)">Please wait a bit, report generation takes about a minute.</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px">
           <button class="btn" id="btn-download-pdf" onclick="downloadReportPDF()" style="display:none;margin:0">⬇ Download as PDF</button>
+          <button class="btn" id="btn-download-ppt" onclick="downloadReportPPTX()" style="display:none;margin:0">⬇ Download as PowerPoint</button>
           <div id="pdf-popup-notice" style="display:none;font-size:12px;color:var(--color-mid-1)">Make sure pop-ups are enabled for this site so the report can download.</div>
         </div>
         <div id="ai-advice" style="display:none"></div>
@@ -2015,6 +2017,7 @@
         generateBtn: '✦ Generate analysis',
         regenerateBtn: '✦ Regenerate analysis',
         downloadBtn: '⬇ Download as PDF',
+        downloadPptBtn: '⬇ Download as PowerPoint',
         popupNotice: 'Enable pop-ups to download',
         contactUs: 'We hope this report is useful for you to continue the reflection. Contact us at contact@wenego.fr',
         newFactorPlaceholder: 'New factor name (e.g. Public visibility)',
@@ -2083,6 +2086,7 @@
         generateBtn: "✦ Générer l'analyse",
         regenerateBtn: "✦ Régénérer l'analyse",
         downloadBtn: '⬇ Télécharger en PDF',
+        downloadPptBtn: '⬇ Télécharger en PowerPoint',
         popupNotice: 'Autorisez les pop-ups pour télécharger',
         contactUs: 'Nous espérons que ce rapport vous sera utile pour poursuivre la réflexion. Contactez-nous à contact@wenego.fr',
         newFactorPlaceholder: 'Nom du nouveau facteur (ex. Visibilité publique)',
@@ -2149,6 +2153,8 @@
       if (genNote) genNote.textContent = t.generatingNote;
       const dlBtn = document.getElementById('btn-download-pdf');
       if (dlBtn) dlBtn.textContent = t.downloadBtn;
+      const pptBtn = document.getElementById('btn-download-ppt');
+      if (pptBtn) pptBtn.textContent = t.downloadPptBtn;
       const notice = document.getElementById('pdf-popup-notice');
       if (notice) notice.textContent = t.popupNotice;
       const prepLabel = document.getElementById('prepared-for-label');
@@ -2974,12 +2980,14 @@
         // sans dépendre d'une capture d'écran fragile de la mise en page stylée.
         lastReport = { data: data.reportData, nA, nB, feA, feB, sA, sB, factorDetails: sortedFactorDetails, circleGroups, topStrengths };
         document.getElementById('btn-download-pdf').style.display = 'inline-block';
+        document.getElementById('btn-download-ppt').style.display = 'inline-block';
         document.getElementById('pdf-popup-notice').style.display = 'block';
 
       } catch (err) {
         box.className = 'ai-box error';
         box.innerHTML = `⚠ Could not load analysis: <em>${err.message}</em>`;
         document.getElementById('btn-download-pdf').style.display = 'none';
+        document.getElementById('btn-download-ppt').style.display = 'none';
         document.getElementById('pdf-popup-notice').style.display = 'none';
       } finally {
         btn.disabled = false;
@@ -3503,6 +3511,203 @@
       doc.save(filename);
     }
 
+
+
+/* =========================================================================
+   EXPORT POWERPOINT — même contenu que le PDF, mais en slides éditables.
+   Requiert la librairie PptxGenJS (chargée dans le <head>, à côté de jsPDF).
+   À coller juste après la fonction downloadReportPDF().
+   ========================================================================= */
+function downloadReportPPTX() {
+  if (!lastReport) {
+    alert(LANG === 'fr'
+      ? "Générez d'abord l'analyse, puis vous pourrez la télécharger en PowerPoint."
+      : 'Generate the analysis first, then you can download it as a PowerPoint.');
+    return;
+  }
+
+  const t = T();
+  const { nA, nB, feA, feB, sA, sB, factorDetails, topStrengths } = lastReport;
+  const preparedBy = (document.getElementById('preparedByName').value || '').trim();
+  const today = new Date().toLocaleDateString(LANG === 'fr' ? 'fr-FR' : 'en-GB',
+    { day: 'numeric', month: 'long', year: 'numeric' });
+
+  // Palette WeNego (hex sans #, format attendu par PptxGenJS)
+  const C = {
+    dark: '141D2C', mid: '7C90AE', gold: 'C9A227', terra: 'E0935B',
+    cream: 'F3EEE3', green: '1E8A4C', feA: '4A6080', feB: 'E8C896',
+    calcA: '27354A', line: 'DDDDDD'
+  };
+  const FONT = 'Calibri';
+  const W = 13.333, M = 0.6, CW = W - 2 * M; // format 16:9 (pouces)
+
+  const pptx = new PptxGenJS();
+  pptx.layout = 'LAYOUT_WIDE';
+  pptx.title = t.title;
+  pptx.company = 'WeNego';
+
+  // PptxGenJS attend "image/png;base64,..." (sans le préfixe "data:")
+  const img = (src) => (src || '').replace(/^data:/, '');
+
+  // Convertit le **gras** et les \n (même syntaxe que l'écran et le PDF)
+  // en "runs" de texte PptxGenJS.
+  function mdRuns(text, base = {}) {
+    const runs = [];
+    const lines = (text || '').split('\n');
+    lines.forEach((line, li) => {
+      const parts = line.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
+      if (!parts.length) parts.push(' ');
+      parts.forEach((p, pi) => {
+        const bold = p.startsWith('**') && p.endsWith('**');
+        runs.push({
+          text: bold ? p.slice(2, -2) : p,
+          options: { ...base, bold: bold || !!base.bold, breakLine: pi === parts.length - 1 && li < lines.length - 1 }
+        });
+      });
+    });
+    return runs;
+  }
+
+  // Slide standard : logo en haut à droite, titre, pied de page + numéro
+  function baseSlide(title) {
+    const s = pptx.addSlide();
+    s.background = { color: 'FFFFFF' };
+    try { s.addImage({ data: img(WENEGO_GOLD_LOGO_BASE64), x: W - M - 1.29, y: 0.3, w: 1.29, h: 0.3 }); } catch (e) { }
+    if (title) {
+      s.addText(title, { x: M, y: 0.35, w: CW - 1.6, h: 0.6, fontFace: FONT, fontSize: 24, bold: true, color: C.dark });
+      s.addShape(pptx.ShapeType.line, { x: M, y: 1.0, w: CW, h: 0, line: { color: C.line, width: 0.75 } });
+    }
+    s.addText(preparedBy ? `${t.preparedFor} ${preparedBy} — ${today}` : today,
+      { x: M, y: 7.0, w: 8, h: 0.3, fontFace: FONT, fontSize: 9, color: C.mid });
+    s.slideNumber = { x: W - M - 0.4, y: 7.0, fontFace: FONT, fontSize: 9, color: C.mid };
+    return s;
+  }
+
+  // Barre de répartition A / B
+  function bar(s, y, a, b, colA, colB, txtB) {
+    const h = 0.42, wa = CW * a / 100, wb = CW - wa;
+    if (wa > 0.01) s.addText(a >= 8 ? a + '%' : '', {
+      shape: pptx.ShapeType.rect, x: M, y, w: wa, h, fill: { color: colA }, line: { color: colA },
+      color: 'FFFFFF', fontFace: FONT, fontSize: 11, bold: true, align: 'right', margin: 6
+    });
+    if (wb > 0.01) s.addText(b >= 8 ? b + '%' : '', {
+      shape: pptx.ShapeType.rect, x: M + wa, y, w: wb, h, fill: { color: colB }, line: { color: colB },
+      color: txtB, fontFace: FONT, fontSize: 11, bold: true, align: 'left', margin: 6
+    });
+  }
+
+  // Libellé + deux cartes de score
+  function statRow(s, y, label, a, b) {
+    s.addText(label, { x: M, y, w: CW, h: 0.35, fontFace: FONT, fontSize: 12, bold: true, color: '000000' });
+    const bw = (CW - 0.3) / 2;
+    [[M, nA, a], [M + bw + 0.3, nB, b]].forEach(([x, name, v]) => {
+      s.addText([
+        { text: name, options: { fontSize: 11, color: C.mid, breakLine: true } },
+        { text: v + '%', options: { fontSize: 26, bold: true, color: C.gold } }
+      ], {
+        shape: pptx.ShapeType.roundRect, rectRadius: 0.08, x, y: y + 0.4, w: bw, h: 1.0,
+        fontFace: FONT, align: 'center', valign: 'middle', fill: { color: C.cream }, line: { color: C.line, width: 0.75 }
+      });
+    });
+  }
+
+  // Carte de texte (plan d'action)
+  function card(s, x, y, w, h, title, runs, accent) {
+    s.addShape(pptx.ShapeType.rect, { x, y, w, h, fill: { color: 'FFFFFF' }, line: { color: C.line, width: 0.75 } });
+    if (accent) s.addShape(pptx.ShapeType.rect, { x, y, w: 0.06, h, fill: { color: accent }, line: { color: accent } });
+    s.addText(title, { x: x + 0.2, y: y + 0.1, w: w - 0.3, h: 0.45, fontFace: FONT, fontSize: 14, bold: true, color: C.dark });
+    s.addText(runs, { x: x + 0.2, y: y + 0.6, w: w - 0.3, h: h - 0.7, fontFace: FONT, fontSize: 11.5, color: '000000', valign: 'top', fit: 'shrink' });
+  }
+
+  // ---- 1. Couverture ----
+  const cover = pptx.addSlide();
+  try { cover.addImage({ data: img(WENEGO_GOLD_LOGO_BASE64), x: W - M - 1.29, y: 0.3, w: 1.29, h: 0.3 }); } catch (e) { }
+  cover.addText(t.title, { x: M, y: 0.9, w: CW, h: 0.8, fontFace: FONT, fontSize: 32, bold: true, color: C.dark, align: 'center' });
+  cover.addText([
+    { text: t.preparedFor + ': ', options: { color: C.mid } },
+    { text: (preparedBy || '—') + '     ', options: { bold: true, color: C.dark } },
+    { text: t.assessingBetween + ': ', options: { color: C.mid } },
+    { text: `${nA} ${LANG === 'fr' ? 'et' : 'and'} ${nB}`, options: { bold: true, color: C.dark } }
+  ], { x: M, y: 1.8, w: CW, h: 0.4, fontFace: FONT, fontSize: 14, align: 'center' });
+  try {
+    const hero = document.querySelector('img[alt="Balance of power scale"]');
+    if (hero && hero.src) {
+      const aspect = (hero.naturalWidth && hero.naturalHeight) ? hero.naturalWidth / hero.naturalHeight : 2.5;
+      const iw = 7.5, ih = iw / aspect;
+      cover.addImage({ data: img(hero.src), x: (W - iw) / 2, y: 2.5, w: iw, h: ih });
+    }
+  } catch (e) { }
+  cover.addText(today, { x: M, y: 6.8, w: CW, h: 0.3, fontFace: FONT, fontSize: 11, color: C.mid, align: 'center' });
+
+  // ---- 2. Introduction ----
+  const intro = baseSlide('Introduction');
+  intro.addText(mdRuns(t.intro1 + '\n\n' + t.intro2 + '\n\n' + t.intro3),
+    { x: M, y: 1.2, w: CW, h: 5.6, fontFace: FONT, fontSize: 14, color: '000000', valign: 'top', fit: 'shrink' });
+
+  // ---- 3. Première évaluation vs analyse calculée ----
+  const s1 = baseSlide(t.title1);
+  statRow(s1, 1.2, t.firstEval, feA, feB);
+  bar(s1, 2.75, feA, feB, C.feA, C.feB, C.dark);
+  statRow(s1, 3.45, t.calcAnalysis, sA, sB);
+  bar(s1, 5.0, sA, sB, C.calcA, C.terra, 'FFFFFF');
+  const diff = Math.abs(sA - sB);
+  const verdict = diff < 5 ? t.roughlyEqual : sA > sB ? t.advantageVerdict(nA, sA, sB) : t.advantageVerdict(nB, sB, sA);
+  s1.addText(mdRuns(verdict), {
+    x: M, y: 5.75, w: CW, h: 0.7, fontFace: FONT, fontSize: 15, color: C.dark,
+    fill: { color: 'EEF1F5' }, margin: 10, valign: 'middle'
+  });
+
+  // ---- 4. Analyse détaillée par facteur (5 facteurs par slide) ----
+  const PER = 5, pages = Math.ceil(factorDetails.length / PER);
+  const header = [t.factorCol, t.weightCol, nA, nB].map((h, i) => ({
+    text: h, options: { bold: true, color: 'FFFFFF', fill: { color: C.dark }, align: i >= 2 ? 'right' : 'left' }
+  }));
+  for (let i = 0; i < factorDetails.length; i += PER) {
+    const chunk = factorDetails.slice(i, i + PER);
+    const s = baseSlide(t.title2 + (pages > 1 ? ` (${i / PER + 1}/${pages})` : ''));
+    const rows = [header, ...chunk.map(f => [
+      {
+        text: [
+          { text: fName(f.name), options: { bold: true, fontSize: 12, breakLine: true } },
+          { text: fDetailText(f.name) || fGlossary(f.name) || '', options: { fontSize: 9.5, color: '444444' } }
+        ]
+      },
+      { text: fCatByLabel(f.cat), options: { bold: true } },
+      { text: f.a + '%', options: { bold: true, align: 'right', color: f.a > f.b ? C.green : '000000' } },
+      { text: f.b + '%', options: { bold: true, align: 'right', color: f.b > f.a ? C.green : '000000' } }
+    ])];
+    s.addTable(rows, {
+      x: M, y: 1.2, w: CW, colW: [8.4, 1.5, 1.12, 1.11], fontFace: FONT, fontSize: 11, color: '000000',
+      valign: 'middle', border: { type: 'solid', pt: 0.5, color: C.line }, margin: 0.08
+    });
+  }
+
+  // ---- 5. Plan d'action (A, B, C) ----
+  const a1 = baseSlide(t.title3);
+  a1.addText(mdRuns(t.reflectionQ), { x: M, y: 1.15, w: CW, h: 0.9, fontFace: FONT, fontSize: 13, color: '000000', valign: 'top' });
+  const cw3 = (CW - 0.4) / 3;
+  const chips = (topStrengths || []).map(f => `**${fName(f.name)} (${f.a}%)**`).join('  ·  ');
+  card(a1, M, 2.2, cw3, 4.6, t.titleA, mdRuns(t.alignmentText.replace('{A}', nA).replace('{B}', nB)));
+  card(a1, M + cw3 + 0.2, 2.2, cw3, 4.6, t.titleB, mdRuns((chips ? chips + '\n\n' : '') + t.reinforceText));
+  card(a1, M + 2 * (cw3 + 0.2), 2.2, cw3, 4.6, t.titleC, mdRuns(t.useStrengthsText));
+
+  // ---- 6. Plan d'action (cercles D, E, F) ----
+  const a2 = baseSlide(t.title3);
+  card(a2, M, 1.2, cw3, 5.6, t.titleD, mdRuns(t.controlIntro), C.terra);
+  card(a2, M + cw3 + 0.2, 1.2, cw3, 5.6, t.titleE, mdRuns(t.influenceIntro), C.mid);
+  card(a2, M + 2 * (cw3 + 0.2), 1.2, cw3, 5.6, t.titleF, mdRuns(t.concernIntro), C.gold);
+
+  // ---- 7. Clôture ----
+  const end = baseSlide('');
+  try { end.addImage({ data: img(WENEGO_GOLD_LOGO_BASE64), x: (W - 3.86) / 2, y: 2.4, w: 3.86, h: 0.9 }); } catch (e) { }
+  end.addText([
+    { text: t.contactUs.replace('contact@wenego.fr', '').trim() + ' ', options: {} },
+    { text: 'contact@wenego.fr', options: { hyperlink: { url: 'mailto:contact@wenego.fr' }, color: C.gold, bold: true } }
+  ], { x: M + 1, y: 3.8, w: CW - 2, h: 1.0, fontFace: FONT, fontSize: 16, color: C.dark, align: 'center', valign: 'middle' });
+
+  const fileName = `Negotiation-Report-${nA}-vs-${nB}`.replace(/\s+/g, '-') + '.pptx';
+  pptx.writeFile({ fileName });
+}
 
 
     // Bouton "← Edit" : revient à l'écran de saisie (step1)
