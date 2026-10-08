@@ -69,11 +69,11 @@
 
     /* Carte centrale qui contient tout l'outil */
     .container {
-      max-width: 700px;
+      max-width: 1080px;
       margin: 0 auto;
       background: #fff;
       border-radius: 16px;
-      padding: 2rem;
+      padding: 2.5rem 3rem;
       border: 1px solid var(--color-mid-2)
     }
 
@@ -1105,9 +1105,225 @@
       color: var(--color-dark-2);
       line-height: 1.5
     }
+
+    /* EN-TÊTE — logo WeNego + baseline à gauche (sélecteur de langue à droite).
+       Le logo est injecté en JS depuis WENEGO_GOLD_LOGO_BASE64.
+       Pour changer la taille du logo : modifier "height" dans .brand-logo. */
+    .brand-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.5rem
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px
+    }
+
+    .brand-logo {
+      height: 22px;
+      width: auto;
+      display: block
+    }
+
+    .brand-tagline {
+      font-size: 10px;
+      color: var(--color-mid-1);
+      letter-spacing: .02em
+    }
+
+    /* =====================================================================
+   BLOC WENEGO (pied de page 1 et de la page résultats) + CTA contact
+   Même contenu que l'AI Maturity Diagnostic, adapté à la largeur 700px :
+   texte en haut, chiffres à gauche et bouton à droite en dessous.
+   Le contenu (EN/FR) est injecté par renderWeNegoBlocks().
+   ===================================================================== */
+    .about {
+      margin-top: 1.5rem;
+      background: #141D2C;
+      color: #fff;
+      border-radius: 12px;
+      padding: 28px 36px
+    }
+
+    .about-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      grid-template-areas: "text stats cta";
+      gap: 30px;
+      align-items: center
+    }
+
+    .about-text {
+      grid-area: text
+    }
+
+    .about-text p {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.7;
+      color: #fff;
+      max-width: 34em
+    }
+
+    .about-stats {
+      grid-area: stats;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-left: 30px;
+      border-left: 1px solid rgba(255, 255, 255, .15)
+    }
+
+    .about-stat {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      font-size: 14px;
+      line-height: 1.5;
+      white-space: nowrap
+    }
+
+    .about-stat .num {
+      font-weight: 700;
+      min-width: 4.6em;
+      color: var(--color-accent-gold)
+    }
+
+    .about-stat .lbl {
+      color: rgba(255, 255, 255, .8)
+    }
+
+    .about-cta {
+      grid-area: cta;
+      justify-self: end
+    }
+
+    .about-cta a {
+      display: inline-block;
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: var(--color-accent-gold);
+      color: #141D2C;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap
+    }
+
+    .about-cta a:hover {
+      filter: brightness(1.06)
+    }
+
+    .about-cta a:focus-visible {
+      outline: 2px solid #fff;
+      outline-offset: 3px
+    }
+
+    .cta-call {
+      margin-top: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 18px 24px;
+      background: #fff;
+      border: 2px solid var(--color-accent-gold);
+      border-radius: 12px
+    }
+
+    .cta-call .cta-ico {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--color-mid-1-08);
+      color: var(--color-dark-1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: none
+    }
+
+    .cta-call .cta-ico svg {
+      width: 22px;
+      height: 22px
+    }
+
+    .cta-call p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--color-dark-2)
+    }
+
+    .cta-call p a {
+      color: var(--color-dark-1);
+      font-weight: 700;
+      text-decoration: underline;
+      text-decoration-color: var(--color-accent-gold);
+      text-decoration-thickness: 2px;
+      text-underline-offset: 3px;
+      white-space: nowrap
+    }
+
+    /* Le bloc WeNego vient sous le compteur de page : on réduit l'espace */
+    .page-num + .about,
+    .page-num + .cta-call {
+      margin-top: 1.25rem
+    }
+
+    .cta-call + .about {
+      margin-top: 12px
+    }
+
+    /* Écrans moyens : texte en haut, chiffres + bouton en dessous */
+    @media (max-width: 900px) {
+      .about-grid {
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-areas: "text text" "stats cta";
+        gap: 20px 24px
+      }
+
+      .about-stats {
+        padding-left: 0;
+        border-left: none;
+        padding-top: 18px;
+        border-top: 1px solid rgba(255, 255, 255, .15)
+      }
+
+      .about-cta {
+        align-self: end
+      }
+    }
+
+    @media (max-width: 560px) {
+      .container {
+        padding: 1.5rem 1.25rem
+      }
+
+      .about {
+        padding: 20px
+      }
+
+      .about-grid {
+        grid-template-columns: 1fr;
+        grid-template-areas: "text" "stats" "cta"
+      }
+
+      .about-cta {
+        justify-self: start
+      }
+
+      .cta-call {
+        align-items: flex-start;
+        padding: 14px;
+        gap: 12px
+      }
+    }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 </head>
 
 <body>
@@ -1121,8 +1337,14 @@
        ===================================================================== -->
     <div class="step active" id="step1">
 
-      <div style="text-align:right;margin-bottom:0.5rem">
-        <button type="button" id="lang-en" onclick="setLang('en')" style="border:1px solid var(--color-mid-2);background:var(--color-dark-1);color:#fff;font-size:12px;font-weight:700;padding:4px 10px;border-radius:6px 0 0 6px;cursor:pointer">EN</button><button type="button" id="lang-fr" onclick="setLang('fr')" style="border:1px solid var(--color-mid-2);border-left:none;background:#fff;color:var(--color-dark-1);font-size:12px;font-weight:700;padding:4px 10px;border-radius:0 6px 6px 0;cursor:pointer">FR</button>
+      <div class="brand-header">
+        <div class="brand">
+          <img id="header-logo" class="brand-logo" alt="WeNego">
+          <div class="brand-tagline">Empowering people &amp; organisations</div>
+        </div>
+        <div>
+          <button type="button" id="lang-en" onclick="setLang('en')" style="border:1px solid var(--color-mid-2);background:var(--color-dark-1);color:#fff;font-size:12px;font-weight:700;padding:4px 10px;border-radius:6px 0 0 6px;cursor:pointer">EN</button><button type="button" id="lang-fr" onclick="setLang('fr')" style="border:1px solid var(--color-mid-2);border-left:none;background:#fff;color:var(--color-dark-1);font-size:12px;font-weight:700;padding:4px 10px;border-radius:0 6px 6px 0;cursor:pointer">FR</button>
+        </div>
       </div>
 
       <h1 id="page1-title">Negotiation Balance of power</h1><br>
@@ -1517,6 +1739,9 @@
 
       <div class="nav"><button class="btn btn-primary" id="btn-next" onclick="goToFactors()">Next →</button></div>
       <div class="page-num">Page 1 / 3</div>
+
+      <!-- Bloc WeNego (texte, chiffres, lien) — contenu injecté par renderWeNegoBlocks() -->
+      <footer class="about" data-wenego-about aria-label="WeNego"></footer>
     </div>
 
     <!-- =====================================================================
@@ -1959,7 +2184,6 @@
         <div id="generating-note" style="margin-top:6px;font-size:12px;color:var(--color-mid-1)">Please wait a bit, report generation takes about a minute.</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px">
           <button class="btn" id="btn-download-pdf" onclick="downloadReportPDF()" style="display:none;margin:0">⬇ Download as PDF</button>
-          <button class="btn" id="btn-download-ppt" onclick="downloadReportPPTX()" style="display:none;margin:0">⬇ Download as PowerPoint</button>
           <div id="pdf-popup-notice" style="display:none;font-size:12px;color:var(--color-mid-1)">Make sure pop-ups are enabled for this site so the report can download.</div>
         </div>
         <div id="ai-advice" style="display:none"></div>
@@ -1969,6 +2193,11 @@
         <button class="btn" id="btn-edit" onclick="goBack()">← Edit</button>
       </div>
       <div class="page-num" id="lbl-page3">Page 3 / 3</div>
+
+      <!-- CTA « échange gratuit de 30 min » juste au-dessus du bloc WeNego -->
+      <div class="cta-call" id="wenego-cta"></div>
+      <!-- Bloc WeNego (texte, chiffres, lien) -->
+      <footer class="about" data-wenego-about aria-label="WeNego"></footer>
     </div>
 
   </div>
@@ -2017,7 +2246,6 @@
         generateBtn: '✦ Generate analysis',
         regenerateBtn: '✦ Regenerate analysis',
         downloadBtn: '⬇ Download as PDF',
-        downloadPptBtn: '⬇ Download as PowerPoint',
         popupNotice: 'Enable pop-ups to download',
         contactUs: 'We hope this report is useful for you to continue the reflection. Contact us at contact@wenego.fr',
         newFactorPlaceholder: 'New factor name (e.g. Public visibility)',
@@ -2086,7 +2314,6 @@
         generateBtn: "✦ Générer l'analyse",
         regenerateBtn: "✦ Régénérer l'analyse",
         downloadBtn: '⬇ Télécharger en PDF',
-        downloadPptBtn: '⬇ Télécharger en PowerPoint',
         popupNotice: 'Autorisez les pop-ups pour télécharger',
         contactUs: 'Nous espérons que ce rapport vous sera utile pour poursuivre la réflexion. Contactez-nous à contact@wenego.fr',
         newFactorPlaceholder: 'Nom du nouveau facteur (ex. Visibilité publique)',
@@ -2147,14 +2374,14 @@
       document.getElementById('lang-fr').style.background = LANG === 'fr' ? 'var(--color-dark-1)' : '#fff';
       document.getElementById('lang-fr').style.color = LANG === 'fr' ? '#fff' : 'var(--color-dark-1)';
 
+      renderWeNegoBlocks(); // bloc WeNego + CTA dans la langue active
+
       const genBtn = document.getElementById('btn-generate');
       if (genBtn && !genBtn.disabled) genBtn.innerHTML = t.generateBtn;
       const genNote = document.getElementById('generating-note');
       if (genNote) genNote.textContent = t.generatingNote;
       const dlBtn = document.getElementById('btn-download-pdf');
       if (dlBtn) dlBtn.textContent = t.downloadBtn;
-      const pptBtn = document.getElementById('btn-download-ppt');
-      if (pptBtn) pptBtn.textContent = t.downloadPptBtn;
       const notice = document.getElementById('pdf-popup-notice');
       if (notice) notice.textContent = t.popupNotice;
       const prepLabel = document.getElementById('prepared-for-label');
@@ -2245,6 +2472,53 @@
       // reflète la nouvelle langue — sans forcer une navigation vers cette page.
       if (document.getElementById('step3') && document.getElementById('step3').classList.contains('active')) {
         showResults();
+      }
+    }
+
+    /* =========================================================================
+       BLOC WENEGO + CTA CONTACT (EN / FR)
+       Pour modifier les textes, les chiffres ou le lien : éditer WENEGO_ABOUT.
+       ========================================================================= */
+    const WENEGO_ABOUT = {
+      en: {
+        text: 'WeNego designs and delivers advanced negotiation workshops, coaching and consultancy for procurement, sales and commercial teams, turning negotiation into a repeatable, measurable skill with immediate ROI.',
+        stats: [['15 yrs', 'In negotiation'], ['1500+', 'Negotiators trained'], ['150+', 'Workshops delivered']],
+        cta: 'Visit wenego.fr', url: 'https://www.wenego.fr/?lang=en',
+        contact: "Let's go deeper into your results in a free 30 min conversation and build your negotiation strategy.",
+        contactAt: 'Contact us at'
+      },
+      fr: {
+        text: "WeNego conçoit et anime des ateliers de négociation avancés, du coaching et du conseil pour les équipes achats et commerciales — pour faire de la négociation une compétence reproductible et mesurable, avec un ROI immédiat.",
+        stats: [['15 ans', "d'existence"], ['1500+', 'Négociateurs formés'], ['150+', 'Ateliers animés']],
+        cta: 'Visiter wenego.fr', url: 'https://www.wenego.fr/?lang=fr',
+        contact: "Approfondissons vos résultats lors d'un échange gratuit de 30 min et construisons ensemble votre stratégie de négociation.",
+        contactAt: 'Contactez-nous à'
+      }
+    };
+    const WENEGO_EMAIL = 'contact@wenego.fr';
+    const WENEGO_TAGLINE = 'Empowering people & organisations';
+
+    function escHtml(v) {
+      return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function renderWeNegoBlocks() {
+      const A = WENEGO_ABOUT[LANG] || WENEGO_ABOUT.en;
+      const aboutHtml = `
+        <div class="about-grid">
+          <div class="about-text"><p>${escHtml(A.text)}</p></div>
+          <div class="about-stats">
+            ${A.stats.map(st => `<div class="about-stat"><span class="num">${escHtml(st[0])}</span><span class="lbl">${escHtml(st[1])}</span></div>`).join('')}
+          </div>
+          <div class="about-cta"><a href="${A.url}" target="_blank" rel="noopener">${escHtml(A.cta)} →</a></div>
+        </div>`;
+      document.querySelectorAll('[data-wenego-about]').forEach(el => { el.innerHTML = aboutHtml; });
+
+      const cta = document.getElementById('wenego-cta');
+      if (cta) {
+        cta.innerHTML = `
+          <div class="cta-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg></div>
+          <p>${escHtml(A.contact)}<br>${escHtml(A.contactAt)} <a href="mailto:${WENEGO_EMAIL}">${WENEGO_EMAIL}</a></p>`;
       }
     }
 
@@ -2980,14 +3254,12 @@
         // sans dépendre d'une capture d'écran fragile de la mise en page stylée.
         lastReport = { data: data.reportData, nA, nB, feA, feB, sA, sB, factorDetails: sortedFactorDetails, circleGroups, topStrengths };
         document.getElementById('btn-download-pdf').style.display = 'inline-block';
-        document.getElementById('btn-download-ppt').style.display = 'inline-block';
         document.getElementById('pdf-popup-notice').style.display = 'block';
 
       } catch (err) {
         box.className = 'ai-box error';
         box.innerHTML = `⚠ Could not load analysis: <em>${err.message}</em>`;
         document.getElementById('btn-download-pdf').style.display = 'none';
-        document.getElementById('btn-download-ppt').style.display = 'none';
         document.getElementById('pdf-popup-notice').style.display = 'none';
       } finally {
         btn.disabled = false;
@@ -3049,7 +3321,7 @@
 
       const PAGE_W = 210, PAGE_H = 297, MARGIN = 15;
       const CONTENT_W = PAGE_W - MARGIN * 2;
-      const HEADER_H = 12, FOOTER_H = 14;
+      const HEADER_H = 17, FOOTER_H = 14; // en-tête : logo + slogan
       const TOP_Y = HEADER_H + 6;
       const BOTTOM_LIMIT = PAGE_H - FOOTER_H;
 
@@ -3062,25 +3334,37 @@
 
       let y = TOP_Y;
 
-      function addHeader() {
-        // Pages 2+ : pas de titre répété, juste le petit logo en haut à droite.
+      // Logo WeNego + slogan « Empowering people & organisations », en haut à
+      // gauche de chaque page (même présentation que l'en-tête de l'outil).
+      function drawBrand() {
+        const logoH = 4.5, logoW = logoH * (300 / 70);
         try {
-          const logoH = 4, logoW = logoH * (300 / 70);
-          doc.addImage(WENEGO_GOLD_LOGO_BASE64, 'PNG', PAGE_W - MARGIN - logoW, 8, logoW, logoH);
-        } catch (e) { /* si le logo échoue, on continue sans bloquer le PDF */ }
+          doc.addImage(WENEGO_GOLD_LOGO_BASE64, 'PNG', MARGIN, 6, logoW, logoH);
+        } catch (e) {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(11);
+          doc.setTextColor(201, 162, 39);
+          doc.text('WeNego', MARGIN, 10);
+        }
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(...MID);
+        doc.text(WENEGO_TAGLINE, MARGIN, 6 + logoH + 3);
+      }
+
+      function addHeader() {
+        // Pages 2+ : pas de titre répété, juste le logo + slogan en haut à gauche.
+        drawBrand();
       }
 
       // Page de couverture (page 1) : logo, titre, "Prepared for", "Assessing
       // between", l'image balance/seesaw, puis le texte d'introduction complet —
       // reproduit l'intro telle qu'elle apparaît dans l'outil lui-même.
       function addCoverPage() {
-        y = 15;
+        y = 24;
 
         // Logo WeNego (fond transparent) en haut à droite de la page de garde
-        try {
-          const logoH = 4, logoW = logoH * (300 / 70);
-          doc.addImage(WENEGO_GOLD_LOGO_BASE64, 'PNG', PAGE_W - MARGIN - logoW, 8, logoW, logoH);
-        } catch (e) { /* si le logo échoue, on continue sans bloquer le PDF */ }
+        drawBrand();
 
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(17);
@@ -3513,203 +3797,6 @@
 
 
 
-/* =========================================================================
-   EXPORT POWERPOINT — même contenu que le PDF, mais en slides éditables.
-   Requiert la librairie PptxGenJS (chargée dans le <head>, à côté de jsPDF).
-   À coller juste après la fonction downloadReportPDF().
-   ========================================================================= */
-function downloadReportPPTX() {
-  if (!lastReport) {
-    alert(LANG === 'fr'
-      ? "Générez d'abord l'analyse, puis vous pourrez la télécharger en PowerPoint."
-      : 'Generate the analysis first, then you can download it as a PowerPoint.');
-    return;
-  }
-
-  const t = T();
-  const { nA, nB, feA, feB, sA, sB, factorDetails, topStrengths } = lastReport;
-  const preparedBy = (document.getElementById('preparedByName').value || '').trim();
-  const today = new Date().toLocaleDateString(LANG === 'fr' ? 'fr-FR' : 'en-GB',
-    { day: 'numeric', month: 'long', year: 'numeric' });
-
-  // Palette WeNego (hex sans #, format attendu par PptxGenJS)
-  const C = {
-    dark: '141D2C', mid: '7C90AE', gold: 'C9A227', terra: 'E0935B',
-    cream: 'F3EEE3', green: '1E8A4C', feA: '4A6080', feB: 'E8C896',
-    calcA: '27354A', line: 'DDDDDD'
-  };
-  const FONT = 'Calibri';
-  const W = 13.333, M = 0.6, CW = W - 2 * M; // format 16:9 (pouces)
-
-  const pptx = new PptxGenJS();
-  pptx.layout = 'LAYOUT_WIDE';
-  pptx.title = t.title;
-  pptx.company = 'WeNego';
-
-  // PptxGenJS attend "image/png;base64,..." (sans le préfixe "data:")
-  const img = (src) => (src || '').replace(/^data:/, '');
-
-  // Convertit le **gras** et les \n (même syntaxe que l'écran et le PDF)
-  // en "runs" de texte PptxGenJS.
-  function mdRuns(text, base = {}) {
-    const runs = [];
-    const lines = (text || '').split('\n');
-    lines.forEach((line, li) => {
-      const parts = line.split(/(\*\*[^*]+\*\*)/g).filter(Boolean);
-      if (!parts.length) parts.push(' ');
-      parts.forEach((p, pi) => {
-        const bold = p.startsWith('**') && p.endsWith('**');
-        runs.push({
-          text: bold ? p.slice(2, -2) : p,
-          options: { ...base, bold: bold || !!base.bold, breakLine: pi === parts.length - 1 && li < lines.length - 1 }
-        });
-      });
-    });
-    return runs;
-  }
-
-  // Slide standard : logo en haut à droite, titre, pied de page + numéro
-  function baseSlide(title) {
-    const s = pptx.addSlide();
-    s.background = { color: 'FFFFFF' };
-    try { s.addImage({ data: img(WENEGO_GOLD_LOGO_BASE64), x: W - M - 1.29, y: 0.3, w: 1.29, h: 0.3 }); } catch (e) { }
-    if (title) {
-      s.addText(title, { x: M, y: 0.35, w: CW - 1.6, h: 0.6, fontFace: FONT, fontSize: 24, bold: true, color: C.dark });
-      s.addShape(pptx.ShapeType.line, { x: M, y: 1.0, w: CW, h: 0, line: { color: C.line, width: 0.75 } });
-    }
-    s.addText(preparedBy ? `${t.preparedFor} ${preparedBy} — ${today}` : today,
-      { x: M, y: 7.0, w: 8, h: 0.3, fontFace: FONT, fontSize: 9, color: C.mid });
-    s.slideNumber = { x: W - M - 0.4, y: 7.0, fontFace: FONT, fontSize: 9, color: C.mid };
-    return s;
-  }
-
-  // Barre de répartition A / B
-  function bar(s, y, a, b, colA, colB, txtB) {
-    const h = 0.42, wa = CW * a / 100, wb = CW - wa;
-    if (wa > 0.01) s.addText(a >= 8 ? a + '%' : '', {
-      shape: pptx.ShapeType.rect, x: M, y, w: wa, h, fill: { color: colA }, line: { color: colA },
-      color: 'FFFFFF', fontFace: FONT, fontSize: 11, bold: true, align: 'right', margin: 6
-    });
-    if (wb > 0.01) s.addText(b >= 8 ? b + '%' : '', {
-      shape: pptx.ShapeType.rect, x: M + wa, y, w: wb, h, fill: { color: colB }, line: { color: colB },
-      color: txtB, fontFace: FONT, fontSize: 11, bold: true, align: 'left', margin: 6
-    });
-  }
-
-  // Libellé + deux cartes de score
-  function statRow(s, y, label, a, b) {
-    s.addText(label, { x: M, y, w: CW, h: 0.35, fontFace: FONT, fontSize: 12, bold: true, color: '000000' });
-    const bw = (CW - 0.3) / 2;
-    [[M, nA, a], [M + bw + 0.3, nB, b]].forEach(([x, name, v]) => {
-      s.addText([
-        { text: name, options: { fontSize: 11, color: C.mid, breakLine: true } },
-        { text: v + '%', options: { fontSize: 26, bold: true, color: C.gold } }
-      ], {
-        shape: pptx.ShapeType.roundRect, rectRadius: 0.08, x, y: y + 0.4, w: bw, h: 1.0,
-        fontFace: FONT, align: 'center', valign: 'middle', fill: { color: C.cream }, line: { color: C.line, width: 0.75 }
-      });
-    });
-  }
-
-  // Carte de texte (plan d'action)
-  function card(s, x, y, w, h, title, runs, accent) {
-    s.addShape(pptx.ShapeType.rect, { x, y, w, h, fill: { color: 'FFFFFF' }, line: { color: C.line, width: 0.75 } });
-    if (accent) s.addShape(pptx.ShapeType.rect, { x, y, w: 0.06, h, fill: { color: accent }, line: { color: accent } });
-    s.addText(title, { x: x + 0.2, y: y + 0.1, w: w - 0.3, h: 0.45, fontFace: FONT, fontSize: 14, bold: true, color: C.dark });
-    s.addText(runs, { x: x + 0.2, y: y + 0.6, w: w - 0.3, h: h - 0.7, fontFace: FONT, fontSize: 11.5, color: '000000', valign: 'top', fit: 'shrink' });
-  }
-
-  // ---- 1. Couverture ----
-  const cover = pptx.addSlide();
-  try { cover.addImage({ data: img(WENEGO_GOLD_LOGO_BASE64), x: W - M - 1.29, y: 0.3, w: 1.29, h: 0.3 }); } catch (e) { }
-  cover.addText(t.title, { x: M, y: 0.9, w: CW, h: 0.8, fontFace: FONT, fontSize: 32, bold: true, color: C.dark, align: 'center' });
-  cover.addText([
-    { text: t.preparedFor + ': ', options: { color: C.mid } },
-    { text: (preparedBy || '—') + '     ', options: { bold: true, color: C.dark } },
-    { text: t.assessingBetween + ': ', options: { color: C.mid } },
-    { text: `${nA} ${LANG === 'fr' ? 'et' : 'and'} ${nB}`, options: { bold: true, color: C.dark } }
-  ], { x: M, y: 1.8, w: CW, h: 0.4, fontFace: FONT, fontSize: 14, align: 'center' });
-  try {
-    const hero = document.querySelector('img[alt="Balance of power scale"]');
-    if (hero && hero.src) {
-      const aspect = (hero.naturalWidth && hero.naturalHeight) ? hero.naturalWidth / hero.naturalHeight : 2.5;
-      const iw = 7.5, ih = iw / aspect;
-      cover.addImage({ data: img(hero.src), x: (W - iw) / 2, y: 2.5, w: iw, h: ih });
-    }
-  } catch (e) { }
-  cover.addText(today, { x: M, y: 6.8, w: CW, h: 0.3, fontFace: FONT, fontSize: 11, color: C.mid, align: 'center' });
-
-  // ---- 2. Introduction ----
-  const intro = baseSlide('Introduction');
-  intro.addText(mdRuns(t.intro1 + '\n\n' + t.intro2 + '\n\n' + t.intro3),
-    { x: M, y: 1.2, w: CW, h: 5.6, fontFace: FONT, fontSize: 14, color: '000000', valign: 'top', fit: 'shrink' });
-
-  // ---- 3. Première évaluation vs analyse calculée ----
-  const s1 = baseSlide(t.title1);
-  statRow(s1, 1.2, t.firstEval, feA, feB);
-  bar(s1, 2.75, feA, feB, C.feA, C.feB, C.dark);
-  statRow(s1, 3.45, t.calcAnalysis, sA, sB);
-  bar(s1, 5.0, sA, sB, C.calcA, C.terra, 'FFFFFF');
-  const diff = Math.abs(sA - sB);
-  const verdict = diff < 5 ? t.roughlyEqual : sA > sB ? t.advantageVerdict(nA, sA, sB) : t.advantageVerdict(nB, sB, sA);
-  s1.addText(mdRuns(verdict), {
-    x: M, y: 5.75, w: CW, h: 0.7, fontFace: FONT, fontSize: 15, color: C.dark,
-    fill: { color: 'EEF1F5' }, margin: 10, valign: 'middle'
-  });
-
-  // ---- 4. Analyse détaillée par facteur (5 facteurs par slide) ----
-  const PER = 5, pages = Math.ceil(factorDetails.length / PER);
-  const header = [t.factorCol, t.weightCol, nA, nB].map((h, i) => ({
-    text: h, options: { bold: true, color: 'FFFFFF', fill: { color: C.dark }, align: i >= 2 ? 'right' : 'left' }
-  }));
-  for (let i = 0; i < factorDetails.length; i += PER) {
-    const chunk = factorDetails.slice(i, i + PER);
-    const s = baseSlide(t.title2 + (pages > 1 ? ` (${i / PER + 1}/${pages})` : ''));
-    const rows = [header, ...chunk.map(f => [
-      {
-        text: [
-          { text: fName(f.name), options: { bold: true, fontSize: 12, breakLine: true } },
-          { text: fDetailText(f.name) || fGlossary(f.name) || '', options: { fontSize: 9.5, color: '444444' } }
-        ]
-      },
-      { text: fCatByLabel(f.cat), options: { bold: true } },
-      { text: f.a + '%', options: { bold: true, align: 'right', color: f.a > f.b ? C.green : '000000' } },
-      { text: f.b + '%', options: { bold: true, align: 'right', color: f.b > f.a ? C.green : '000000' } }
-    ])];
-    s.addTable(rows, {
-      x: M, y: 1.2, w: CW, colW: [8.4, 1.5, 1.12, 1.11], fontFace: FONT, fontSize: 11, color: '000000',
-      valign: 'middle', border: { type: 'solid', pt: 0.5, color: C.line }, margin: 0.08
-    });
-  }
-
-  // ---- 5. Plan d'action (A, B, C) ----
-  const a1 = baseSlide(t.title3);
-  a1.addText(mdRuns(t.reflectionQ), { x: M, y: 1.15, w: CW, h: 0.9, fontFace: FONT, fontSize: 13, color: '000000', valign: 'top' });
-  const cw3 = (CW - 0.4) / 3;
-  const chips = (topStrengths || []).map(f => `**${fName(f.name)} (${f.a}%)**`).join('  ·  ');
-  card(a1, M, 2.2, cw3, 4.6, t.titleA, mdRuns(t.alignmentText.replace('{A}', nA).replace('{B}', nB)));
-  card(a1, M + cw3 + 0.2, 2.2, cw3, 4.6, t.titleB, mdRuns((chips ? chips + '\n\n' : '') + t.reinforceText));
-  card(a1, M + 2 * (cw3 + 0.2), 2.2, cw3, 4.6, t.titleC, mdRuns(t.useStrengthsText));
-
-  // ---- 6. Plan d'action (cercles D, E, F) ----
-  const a2 = baseSlide(t.title3);
-  card(a2, M, 1.2, cw3, 5.6, t.titleD, mdRuns(t.controlIntro), C.terra);
-  card(a2, M + cw3 + 0.2, 1.2, cw3, 5.6, t.titleE, mdRuns(t.influenceIntro), C.mid);
-  card(a2, M + 2 * (cw3 + 0.2), 1.2, cw3, 5.6, t.titleF, mdRuns(t.concernIntro), C.gold);
-
-  // ---- 7. Clôture ----
-  const end = baseSlide('');
-  try { end.addImage({ data: img(WENEGO_GOLD_LOGO_BASE64), x: (W - 3.86) / 2, y: 2.4, w: 3.86, h: 0.9 }); } catch (e) { }
-  end.addText([
-    { text: t.contactUs.replace('contact@wenego.fr', '').trim() + ' ', options: {} },
-    { text: 'contact@wenego.fr', options: { hyperlink: { url: 'mailto:contact@wenego.fr' }, color: C.gold, bold: true } }
-  ], { x: M + 1, y: 3.8, w: CW - 2, h: 1.0, fontFace: FONT, fontSize: 16, color: C.dark, align: 'center', valign: 'middle' });
-
-  const fileName = `Negotiation-Report-${nA}-vs-${nB}`.replace(/\s+/g, '-') + '.pptx';
-  pptx.writeFile({ fileName });
-}
-
-
     // Bouton "← Edit" : revient à l'écran de saisie (step1)
     function goBack() {
       document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
@@ -3720,6 +3807,7 @@ function downloadReportPPTX() {
     /* =========================================================================
        INITIALISATION AU CHARGEMENT DE LA PAGE
        ========================================================================= */
+    document.getElementById('header-logo').src = WENEGO_GOLD_LOGO_BASE64; // logo de l'en-tête
     renderFactors(); // dessine la liste des facteurs par défaut
     updateLive();    // affiche le score initial (50% / 50%)
     applyLanguage(); // applique la langue par défaut (EN) aux textes statiques
