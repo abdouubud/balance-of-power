@@ -1324,6 +1324,8 @@
     }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- PptxGenJS : génération du rapport PowerPoint (.pptx) dans le navigateur -->
+  <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 </head>
 
 <body>
@@ -2183,7 +2185,7 @@
         <button class="btn-generate" id="btn-generate" onclick="triggerAI()">✦ Generate analysis</button>
         <div id="generating-note" style="margin-top:6px;font-size:12px;color:var(--color-mid-1)">Please wait a bit, report generation takes about a minute.</div>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px">
-          <button class="btn" id="btn-download-pdf" onclick="downloadReportPDF()" style="display:none;margin:0">⬇ Download as PDF</button>
+          <button class="btn" id="btn-download-pdf" onclick="downloadReportPPT()" style="display:none;margin:0">⬇ Download as PowerPoint</button>
           <div id="pdf-popup-notice" style="display:none;font-size:12px;color:var(--color-mid-1)">Make sure pop-ups are enabled for this site so the report can download.</div>
         </div>
         <div id="ai-advice" style="display:none"></div>
@@ -2245,7 +2247,7 @@
         assessingBetween: 'Assessing the balance of power between',
         generateBtn: '✦ Generate analysis',
         regenerateBtn: '✦ Regenerate analysis',
-        downloadBtn: '⬇ Download as PDF',
+        downloadBtn: '⬇ Download as PowerPoint',
         popupNotice: 'Enable pop-ups to download',
         contactUs: 'We hope this report is useful for you to continue the reflection. Contact us at contact@wenego.fr',
         newFactorPlaceholder: 'New factor name (e.g. Public visibility)',
@@ -2313,7 +2315,7 @@
         assessingBetween: 'Évaluation du rapport de force entre',
         generateBtn: "✦ Générer l'analyse",
         regenerateBtn: "✦ Régénérer l'analyse",
-        downloadBtn: '⬇ Télécharger en PDF',
+        downloadBtn: '⬇ Télécharger en PowerPoint',
         popupNotice: 'Autorisez les pop-ups pour télécharger',
         contactUs: 'Nous espérons que ce rapport vous sera utile pour poursuivre la réflexion. Contactez-nous à contact@wenego.fr',
         newFactorPlaceholder: 'Nom du nouveau facteur (ex. Visibilité publique)',
@@ -3311,6 +3313,256 @@
       return (html || '').replace(/<[^>]+>/g, '');
     }
 
+    // =========================================================================
+    // GÉNÉRATION DU RAPPORT POWERPOINT (.pptx) — PptxGenJS, format 16:9.
+    // Même contenu que l'ancien PDF (downloadReportPDF, toujours présent plus
+    // haut si besoin), réparti en diapositives :
+    //   1. Couverture  2. Introduction  3. First evaluation vs calculated
+    //   4+. Analyse par facteur (7 facteurs par diapo)  5. Plan d'action A-B-C
+    //   6. Les 3 cercles D-E-F  7. CTA contact + bloc WeNego
+    // Chaque diapo : logo + « Empowering people & organisations » en haut à
+    // gauche, « Prepared for … — date » et numéro de page en bas.
+    // =========================================================================
+    function downloadReportPPT() {
+      if (!lastReport) {
+        alert(LANG === 'fr'
+          ? "Générez d'abord l'analyse, puis vous pourrez la télécharger en PowerPoint."
+          : 'Generate the analysis first, then you can download it as a PowerPoint.');
+        return;
+      }
+      if (typeof PptxGenJS === 'undefined') {
+        alert(LANG === 'fr'
+          ? "Le module PowerPoint n'a pas pu se charger. Vérifiez votre connexion et réessayez."
+          : 'The PowerPoint module could not load. Check your connection and try again.');
+        return;
+      }
+
+      const { nA, nB, feA, feB, sA, sB, factorDetails, topStrengths } = lastReport;
+      const t = T();
+      const A = WENEGO_ABOUT[LANG] || WENEGO_ABOUT.en;
+      const preparedBy = (document.getElementById('preparedByName').value || '').trim();
+      const today = new Date().toLocaleDateString(LANG === 'fr' ? 'fr-FR' : 'en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      // Couleurs (hex sans #) et police
+      const C = {
+        navy: '141D2C', dark: '1E293A', mid: '7C90AE', line: 'D9DEE6', gold: 'C9A227',
+        goldLight: 'E8C896', terra: 'E0935B', cream: 'F3EEE3', soft: 'ECF0F6',
+        steel: '4A6080', green: '1E8A4C', white: 'FFFFFF', black: '000000', pale: 'CDD4E0'
+      };
+      const FONT = 'Calibri';
+      const W = 13.333, H = 7.5, M = 0.6, CW = W - 2 * M;
+
+      const pptx = new PptxGenJS();
+      pptx.layout = 'LAYOUT_WIDE';
+      pptx.title = t.title;
+      pptx.company = 'WeNego';
+      pptx.author = 'WeNego';
+
+      // Texte avec **gras** et \n → runs PptxGenJS
+      function runs(text, base = {}) {
+        const out = [];
+        const lines = String(text || '').split('\n');
+        lines.forEach((line, li) => {
+          const parts = line.split(/(\*\*[^*]+\*\*)/g).filter(p => p !== '');
+          if (!parts.length) parts.push(' ');
+          parts.forEach((p, pi) => {
+            const bold = p.startsWith('**') && p.endsWith('**');
+            const opt = Object.assign({}, base, { bold: bold || !!base.bold });
+            if (pi === parts.length - 1 && li < lines.length - 1) opt.breakLine = true;
+            out.push({ text: bold ? p.slice(2, -2) : p, options: opt });
+          });
+        });
+        return out;
+      }
+
+      let slideNo = 0;
+      function newSlide() {
+        const sl = pptx.addSlide();
+        sl.background = { color: C.white };
+        slideNo++;
+        // Logo + slogan
+        try {
+          sl.addImage({ data: WENEGO_GOLD_LOGO_BASE64, x: M, y: 0.32, w: 0.34 * (300 / 70), h: 0.34 });
+        } catch (e) {
+          sl.addText('WeNego', { x: M, y: 0.3, w: 2, h: 0.4, fontFace: FONT, fontSize: 18, bold: true, color: C.gold, margin: 0 });
+        }
+        sl.addText(WENEGO_TAGLINE, { x: M, y: 0.7, w: 4, h: 0.22, fontFace: FONT, fontSize: 9, color: C.mid, margin: 0 });
+        // Pied de page
+        sl.addShape(pptx.ShapeType.line, { x: M, y: H - 0.5, w: CW, h: 0, line: { color: C.line, width: 0.75 } });
+        const left = preparedBy ? `${t.preparedFor} ${preparedBy} — ${today}` : today;
+        sl.addText(left, { x: M, y: H - 0.45, w: 8, h: 0.3, fontFace: FONT, fontSize: 9, color: C.mid, margin: 0 });
+        sl.addText(String(slideNo), { x: W - M - 1, y: H - 0.45, w: 1, h: 0.3, fontFace: FONT, fontSize: 9, color: C.mid, align: 'right', margin: 0 });
+        return sl;
+      }
+      function slideTitle(sl, text, sub) {
+        sl.addText(text, { x: M, y: 1.05, w: CW, h: 0.55, fontFace: FONT, fontSize: 26, bold: true, color: C.navy, margin: 0 });
+        sl.addShape(pptx.ShapeType.rect, { x: M, y: 1.66, w: 0.8, h: 0.06, fill: { color: C.gold }, line: { color: C.gold, width: 0 } });
+        if (sub) sl.addText(sub, { x: M, y: 1.8, w: CW, h: 0.35, fontFace: FONT, fontSize: 13, color: C.mid, margin: 0 });
+      }
+
+      // ---- 1. Couverture ----
+      {
+        const sl = newSlide();
+        sl.addText(t.title, { x: M, y: 1.25, w: CW, h: 0.8, fontFace: FONT, fontSize: 36, bold: true, color: C.navy, align: 'center', margin: 0 });
+        sl.addText(t.subtitle, { x: M, y: 2.05, w: CW, h: 0.4, fontFace: FONT, fontSize: 16, color: C.dark, align: 'center', margin: 0 });
+        const heroEl = document.querySelector('img[alt="Balance of power scale"]');
+        let imgBottom = 2.6;
+        if (heroEl && heroEl.src) {
+          const aspect = (heroEl.naturalWidth && heroEl.naturalHeight) ? heroEl.naturalWidth / heroEl.naturalHeight : 2.4;
+          let ih = 2.9, iw = ih * aspect;
+          if (iw > CW * 0.75) { iw = CW * 0.75; ih = iw / aspect; }
+          try {
+            sl.addImage({ data: heroEl.src, x: (W - iw) / 2, y: 2.7, w: iw, h: ih, rounding: false });
+            imgBottom = 2.7 + ih;
+          } catch (e) { /* on continue sans l'image */ }
+        }
+        const meta = [
+          { text: t.preparedFor + ': ', options: { color: C.mid } },
+          { text: (preparedBy || (LANG === 'fr' ? 'Non précisé' : 'Not specified')), options: { bold: true, color: C.navy } },
+          { text: '      ' + t.assessingBetween + ': ', options: { color: C.mid } },
+          { text: `${nA} ${LANG === 'fr' ? 'et' : 'and'} ${nB}`, options: { bold: true, color: C.navy } }
+        ];
+        sl.addText(meta, { x: M, y: Math.min(imgBottom + 0.25, H - 1.05), w: CW, h: 0.4, fontFace: FONT, fontSize: 14, align: 'center', margin: 0 });
+      }
+
+      // ---- 2. Introduction ----
+      {
+        const sl = newSlide();
+        slideTitle(sl, 'Introduction');
+        sl.addText(runs(t.intro1 + '\n\n' + t.intro2 + '\n\n' + t.intro3, { color: C.dark }), {
+          x: M, y: 2.0, w: CW, h: H - 2.7, fontFace: FONT, fontSize: 15, valign: 'top', margin: 0, paraSpaceAfter: 2, lineSpacingMultiple: 1.1, fit: 'shrink'
+        });
+      }
+
+      // ---- 3. First evaluation vs calculated analysis ----
+      {
+        const sl = newSlide();
+        slideTitle(sl, t.title1);
+        const colW = (CW - 0.6) / 2;
+        [[t.firstEval, feA, feB, C.steel, C.goldLight, C.white, C.dark], [t.calcAnalysis, sA, sB, C.dark, C.terra, C.white, C.white]].forEach((col, i) => {
+          const [label, a, b, cA, cB, tA, tB] = col;
+          const x = M + i * (colW + 0.6);
+          sl.addText(label.toUpperCase(), { x, y: 2.1, w: colW, h: 0.35, fontFace: FONT, fontSize: 12, bold: true, color: C.mid, charSpacing: 1, margin: 0 });
+          const bw = (colW - 0.3) / 2;
+          [[nA, a], [nB, b]].forEach(([n, v], j) => {
+            const bx = x + j * (bw + 0.3);
+            sl.addShape(pptx.ShapeType.roundRect, { x: bx, y: 2.55, w: bw, h: 1.45, fill: { color: C.cream }, line: { color: C.line, width: 0.75 }, rectRadius: 0.12 });
+            sl.addText(n, { x: bx, y: 2.7, w: bw, h: 0.35, fontFace: FONT, fontSize: 13, color: C.mid, align: 'center', margin: 0 });
+            sl.addText(v + '%', { x: bx, y: 3.1, w: bw, h: 0.7, fontFace: FONT, fontSize: 34, bold: true, color: C.gold, align: 'center', margin: 0 });
+          });
+          // Barre de répartition A | B
+          const barY = 4.3, barH = 0.42, wa = Math.max(0.0001, colW * a / 100), wb = colW - wa;
+          if (a > 0) sl.addShape(pptx.ShapeType.rect, { x, y: barY, w: wa, h: barH, fill: { color: cA }, line: { color: cA, width: 0 } });
+          if (b > 0) sl.addShape(pptx.ShapeType.rect, { x: x + wa, y: barY, w: wb, h: barH, fill: { color: cB }, line: { color: cB, width: 0 } });
+          if (a >= 12) sl.addText(`${nA} ${a}%`, { x, y: barY, w: wa - 0.1, h: barH, fontFace: FONT, fontSize: 10, bold: true, color: tA, align: 'right', valign: 'middle', margin: 0 });
+          if (b >= 12) sl.addText(`${nB} ${b}%`, { x: x + wa + 0.1, y: barY, w: wb - 0.1, h: barH, fontFace: FONT, fontSize: 10, bold: true, color: tB, align: 'left', valign: 'middle', margin: 0 });
+        });
+        const diff = Math.abs(sA - sB);
+        const verdict = diff < 5 ? t.roughlyEqual : sA > sB ? t.advantageVerdict(nA, sA, sB) : t.advantageVerdict(nB, sB, sA);
+        sl.addShape(pptx.ShapeType.roundRect, { x: M, y: 5.2, w: CW, h: 0.8, fill: { color: C.soft }, line: { color: C.soft, width: 0 }, rectRadius: 0.1 });
+        sl.addText(runs(verdict, { color: C.navy }), { x: M + 0.3, y: 5.2, w: CW - 0.6, h: 0.8, fontFace: FONT, fontSize: 16, valign: 'middle', margin: 0 });
+      }
+
+      // ---- 4+. Analyse détaillée par facteur (7 par diapo) ----
+      {
+        const list = factorDetails || [];
+        const PER = 7, pages = Math.max(1, Math.ceil(list.length / PER));
+        const hdr = (txt, align) => ({ text: txt, options: { bold: true, color: C.white, fill: { color: C.navy }, align: align || 'left', fontSize: 12 } });
+        for (let p = 0; p < pages; p++) {
+          const sl = newSlide();
+          slideTitle(sl, t.title2 + (pages > 1 ? ` (${p + 1}/${pages})` : ''));
+          const rows = [[hdr(t.factorCol), hdr(t.weightCol, 'center'), hdr(nA, 'center'), hdr(nB, 'center')]];
+          list.slice(p * PER, (p + 1) * PER).forEach((f, i) => {
+            const fill = { color: i % 2 ? 'FFFFFF' : 'F8F6F1' };
+            const def = fDetailText(f.name) || fGlossary(f.name);
+            rows.push([
+              { text: [
+                  { text: fName(f.name), options: { bold: true, fontSize: 12, color: C.black, breakLine: true } },
+                  { text: def, options: { fontSize: 9.5, color: '3A4556' } }
+                ], options: { fill, valign: 'middle' } },
+              { text: fCatByLabel(f.cat), options: { fill, bold: true, align: 'center', valign: 'middle', fontSize: 11, color: C.black } },
+              { text: f.a + '%', options: { fill, bold: true, align: 'center', valign: 'middle', fontSize: 13, color: f.a > f.b ? C.green : C.black } },
+              { text: f.b + '%', options: { fill, bold: true, align: 'center', valign: 'middle', fontSize: 13, color: f.b > f.a ? C.green : C.black } }
+            ]);
+          });
+          sl.addTable(rows, {
+            x: M, y: 2.0, w: CW, colW: [CW - 1.4 - 1.6 - 1.6, 1.4, 1.6, 1.6],
+            fontFace: FONT, border: { type: 'solid', color: C.line, pt: 0.75 }, margin: [0.05, 0.1, 0.05, 0.1], autoPage: false
+          });
+        }
+      }
+
+      // Carte de texte (titre + contenu riche), utilisée pour A-F
+      function card(sl, x, y, w, h, title, body, accent, extra) {
+        sl.addShape(pptx.ShapeType.roundRect, { x, y, w, h, fill: { color: C.white }, line: { color: C.line, width: 0.75 }, rectRadius: 0.1 });
+        sl.addShape(pptx.ShapeType.rect, { x, y: y + 0.12, w: 0.07, h: h - 0.24, fill: { color: accent }, line: { color: accent, width: 0 } });
+        sl.addText(title, { x: x + 0.25, y: y + 0.15, w: w - 0.4, h: 0.7, fontFace: FONT, fontSize: 15, bold: true, color: C.navy, valign: 'top', margin: 0, fit: 'shrink' });
+        let by = y + 0.9;
+        if (extra) {
+          sl.addText(extra, { x: x + 0.25, y: by, w: w - 0.4, h: 0.5, fontFace: FONT, fontSize: 11, bold: true, color: C.gold, valign: 'top', margin: 0 });
+          by += 0.55;
+        }
+        sl.addText(runs(body, { color: C.dark }), { x: x + 0.25, y: by, w: w - 0.4, h: y + h - by - 0.15, fontFace: FONT, fontSize: 13.5, valign: 'top', margin: 0, lineSpacingMultiple: 1.1, fit: 'shrink' });
+      }
+
+      // ---- 5. Plan d'action : question + A / B / C ----
+      {
+        const sl = newSlide();
+        slideTitle(sl, t.title3);
+        sl.addShape(pptx.ShapeType.roundRect, { x: M, y: 2.0, w: CW, h: 0.85, fill: { color: 'FAF5E6' }, line: { color: C.gold, width: 1 }, rectRadius: 0.1 });
+        sl.addText(runs(t.reflectionQ, { color: C.navy }), { x: M + 0.3, y: 2.0, w: CW - 0.6, h: 0.85, fontFace: FONT, fontSize: 14, valign: 'middle', margin: 0, fit: 'shrink' });
+        const cw = (CW - 0.6) / 3, cy = 3.1, ch = H - 0.75 - cy;
+        const strengths = (topStrengths && topStrengths.length) ? topStrengths.map(f => `${fName(f.name)} (${f.a}%)`).join('  ·  ') : '';
+        card(sl, M, cy, cw, ch, t.titleA, t.alignmentText.replace('{A}', nA).replace('{B}', nB), C.mid);
+        card(sl, M + cw + 0.3, cy, cw, ch, t.titleB, t.reinforceText, C.gold, strengths);
+        card(sl, M + 2 * (cw + 0.3), cy, cw, ch, t.titleC, t.useStrengthsText, C.terra);
+      }
+
+      // ---- 6. Les 3 cercles : D / E / F ----
+      {
+        const sl = newSlide();
+        slideTitle(sl, t.title3, LANG === 'fr' ? 'Contrôle, influence, préoccupation' : 'Control, influence, concern');
+        const cw = (CW - 0.6) / 3, cy = 2.35, ch = H - 0.75 - cy;
+        card(sl, M, cy, cw, ch, t.titleD, t.controlIntro, C.terra);
+        card(sl, M + cw + 0.3, cy, cw, ch, t.titleE, t.influenceIntro, C.mid);
+        card(sl, M + 2 * (cw + 0.3), cy, cw, ch, t.titleF, t.concernIntro, C.gold);
+      }
+
+      // ---- 7. CTA contact + bloc WeNego ----
+      {
+        const sl = newSlide();
+        // Carte CTA
+        const cy = 1.7, ch = 1.35;
+        sl.addShape(pptx.ShapeType.roundRect, { x: M, y: cy, w: CW, h: ch, fill: { color: C.white }, line: { color: C.gold, width: 2 }, rectRadius: 0.15 });
+        sl.addShape(pptx.ShapeType.ellipse, { x: M + 0.35, y: cy + ch / 2 - 0.35, w: 0.7, h: 0.7, fill: { color: C.soft }, line: { color: C.soft, width: 0 } });
+        sl.addShape(pptx.ShapeType.roundRect, { x: M + 0.53, y: cy + ch / 2 - 0.17, w: 0.34, h: 0.26, fill: { color: C.soft }, line: { color: C.navy, width: 1.25 }, rectRadius: 0.04 });
+        sl.addText([
+          { text: A.contact, options: { color: C.dark, breakLine: true } },
+          { text: A.contactAt + ' ', options: { color: C.dark } },
+          { text: WENEGO_EMAIL, options: { bold: true, color: C.navy, underline: { style: 'sng', color: C.gold }, hyperlink: { url: 'mailto:' + WENEGO_EMAIL } } }
+        ], { x: M + 1.35, y: cy, w: CW - 1.65, h: ch, fontFace: FONT, fontSize: 17, valign: 'middle', margin: 0, lineSpacingMultiple: 1.2 });
+
+        // Bloc WeNego : texte | chiffres | bouton
+        const by = cy + ch + 0.3, bh = 2.4;
+        sl.addShape(pptx.ShapeType.roundRect, { x: M, y: by, w: CW, h: bh, fill: { color: C.navy }, line: { color: C.navy, width: 0 }, rectRadius: 0.15 });
+        const tw = CW * 0.46;
+        sl.addText(A.text, { x: M + 0.5, y: by, w: tw - 0.5, h: bh, fontFace: FONT, fontSize: 15, color: C.white, valign: 'middle', margin: 0, lineSpacingMultiple: 1.2 });
+        const sx = M + tw + 0.35;
+        sl.addShape(pptx.ShapeType.line, { x: sx - 0.2, y: by + 0.45, w: 0, h: bh - 0.9, line: { color: '465573', width: 1 } });
+        A.stats.forEach((st, i) => {
+          const yy = by + 0.45 + i * 0.52;
+          sl.addText(st[0], { x: sx + 0.1, y: yy, w: 1.2, h: 0.45, fontFace: FONT, fontSize: 17, bold: true, color: C.gold, valign: 'middle', margin: 0 });
+          sl.addText(st[1], { x: sx + 1.35, y: yy, w: 2.6, h: 0.45, fontFace: FONT, fontSize: 15, color: C.pale, valign: 'middle', margin: 0 });
+        });
+        const btnW = 2.5, btnH = 0.6, bx = M + CW - 0.45 - btnW;
+        sl.addShape(pptx.ShapeType.roundRect, { x: bx, y: by + bh / 2 - btnH / 2, w: btnW, h: btnH, fill: { color: C.gold }, line: { color: C.gold, width: 0 }, rectRadius: 0.3 });
+        sl.addText(A.cta + ' →', { x: bx, y: by + bh / 2 - btnH / 2, w: btnW, h: btnH, fontFace: FONT, fontSize: 15, bold: true, color: C.navy, align: 'center', valign: 'middle', margin: 0, hyperlink: { url: A.url } });
+      }
+
+      const fileName = `Negotiation-Report-${nA}-vs-${nB}`.replace(/\s+/g, '-') + '.pptx';
+      return pptx.writeFile({ fileName });
+    }
+
     function downloadReportPDF() {
       if (!lastReport) {
         alert('Generate the analysis first, then you can download it as a PDF.');
@@ -3756,25 +4008,90 @@
       sectionTitle(t.titleF);
       richParagraph(t.concernIntro, { color: [0, 0, 0], after: 4 });
 
-      y += 3;
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(...MID);
-      const contactMsg = t.contactUs.replace('contact@wenego.fr', '').trim();
-      const contactLines = doc.splitTextToSize(contactMsg, CONTENT_W);
-      contactLines.forEach(line => {
-        ensureSpace(4.5);
+      // ---- Fin du rapport : carte CTA (échange de 30 min) + bloc WeNego ----
+      // Même contenu que le pied de la page résultats (WENEGO_ABOUT, EN/FR).
+      {
+        const A = WENEGO_ABOUT[LANG] || WENEGO_ABOUT.en;
+        const NAVY = [20, 29, 44], GOLD = [201, 162, 39], INK = [30, 41, 58], SOFT = [236, 240, 246], PALE = [205, 212, 224];
+        const ABOUT_H = 30, GAP = 3, LH = 4.2;
+        const ctx = MARGIN + 15, ccw = CONTENT_W - 15 - 6;
+
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
-        doc.setTextColor(...MID);
-        doc.text(line, PAGE_W / 2, y, { align: 'center' });
-        y += 4.5;
-      });
-      ensureSpace(4.5);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      const emailW = doc.getTextWidth('contact@wenego.fr');
-      doc.textWithLink('contact@wenego.fr', PAGE_W / 2 - emailW / 2, y, { url: 'mailto:contact@wenego.fr' });
+        const cl = doc.splitTextToSize(A.contact, ccw);
+        const CTA_H = (cl.length + 1) * LH + 7;
+        y += 6;
+        ensureSpace(CTA_H + GAP + ABOUT_H);
+
+        // Carte CTA : fond blanc, bordure dorée, icône bulle
+        const cy0 = y;
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(...GOLD);
+        doc.setLineWidth(0.6);
+        doc.roundedRect(MARGIN, cy0, CONTENT_W, CTA_H, 2, 2, 'FD');
+        const ic = MARGIN + 8, icy = cy0 + CTA_H / 2;
+        doc.setFillColor(...SOFT);
+        doc.circle(ic, icy, 3.8, 'F');
+        doc.setDrawColor(...NAVY);
+        doc.setLineWidth(0.4);
+        doc.roundedRect(ic - 2, icy - 1.7, 4, 2.8, 0.5, 0.5, 'S');
+        doc.line(ic - 1.3, icy + 1.1, ic - 1.7, icy + 2);
+
+        const ty0 = cy0 + 3.5 + LH * 0.75;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(...INK);
+        cl.forEach((l, j) => doc.text(l, ctx, ty0 + j * LH));
+        const my = ty0 + cl.length * LH, atTxt = A.contactAt + ' ';
+        doc.text(atTxt, ctx, my);
+        const mx = ctx + doc.getTextWidth(atTxt);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...NAVY);
+        doc.text(WENEGO_EMAIL, mx, my);
+        const mailW = doc.getTextWidth(WENEGO_EMAIL);
+        doc.setDrawColor(...GOLD);
+        doc.setLineWidth(0.4);
+        doc.line(mx, my + 0.9, mx + mailW, my + 0.9);
+        doc.link(mx, my - LH * 0.75, mailW, LH, { url: 'mailto:' + WENEGO_EMAIL });
+        y += CTA_H + GAP;
+
+        // Bloc WeNego : fond bleu nuit, texte | chiffres | bouton doré
+        const y0 = y, tw = CONTENT_W * 0.5;
+        doc.setFillColor(...NAVY);
+        doc.roundedRect(MARGIN, y0, CONTENT_W, ABOUT_H, 2, 2, 'F');
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(255, 255, 255);
+        const lines = doc.splitTextToSize(A.text, tw - 8), st = 3.7;
+        let ty = y0 + (ABOUT_H - lines.length * st) / 2 + st * 0.75;
+        lines.forEach(l => { doc.text(l, MARGIN + 5, ty); ty += st; });
+
+        const sx = MARGIN + tw + 2;
+        doc.setDrawColor(70, 85, 115);
+        doc.setLineWidth(0.3);
+        doc.line(sx - 2, y0 + 5, sx - 2, y0 + ABOUT_H - 5);
+        A.stats.forEach((stat, i) => {
+          const yy = y0 + 9.5 + i * 5.5;
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8.5);
+          doc.setTextColor(...GOLD);
+          doc.text(stat[0], sx + 2, yy);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          doc.setTextColor(...PALE);
+          doc.text(stat[1], sx + 16, yy);
+        });
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        const bw = doc.getTextWidth(A.cta) + 9, bx = MARGIN + CONTENT_W - 5 - bw, by = y0 + ABOUT_H / 2 - 3.75;
+        doc.setFillColor(...GOLD);
+        doc.roundedRect(bx, by, bw, 7.5, 3.75, 3.75, 'F');
+        doc.setTextColor(...NAVY);
+        doc.text(A.cta, bx + 4.5, by + 5.1);
+        doc.link(bx, by, bw, 7.5, { url: A.url });
+        y += ABOUT_H;
+      }
 
       // ---- Pied de page sur chaque page : préparé par / date à gauche, numéro à droite ----
       const totalPages = doc.internal.getNumberOfPages();
