@@ -2895,7 +2895,7 @@
     // URL du Google Apps Script Web App qui enregistre chaque soumission dans
     // une feuille Google Sheets (voir la documentation fournie séparément
     // pour la mise en place). Laisser vide désactive le suivi sans rien casser.
-    const SHEET_LOG_URL = 'https://script.google.com/macros/s/AKfycbzHVeOo4l5-TLM0Vu6w9cz1aQre3yxNdYwFDnGd9wHBljgsBPZzSehPlU5VgDWK9SVjvg/exec';
+    const SHEET_LOG_URL = 'https://script.google.com/macros/s/AKfycbzOE0BQ4-JldSXY8m3rIiXN4jZ-3-cq-Z4eUxvHCMkqXj8CVvPE9taSU35rbkWgZyNFvQ/exec';
 
     const FACTOR_GLOSSARY = {
       'Preparation': 'How thoroughly a party has researched the deal, defined objectives, and rehearsed their approach.',
@@ -3160,7 +3160,9 @@
     // Envoie un résumé de la soumission (qui a rempli l'outil + ses données) à
     // la feuille Google Sheets connectée, sans jamais bloquer la génération du
     // rapport si ça échoue (connexion absente, URL non configurée, etc.).
-    function logSubmission(nA, nB, feA, feB, sA, sB, factorDetails) {
+    // report (optionnel) = { b64, fileName } : le rapport PowerPoint, que le
+    // script Apps Script joint à l'email envoyé à contact@wenego.fr.
+    function logSubmission(nA, nB, feA, feB, sA, sB, factorDetails, report) {
       if (!SHEET_LOG_URL || SHEET_LOG_URL.indexOf('PASTE_YOUR') === 0) return;
       try {
         const preparedBy = (document.getElementById('preparedByName').value || '').trim();
@@ -3170,6 +3172,13 @@
           lang: LANG,
           factors: (factorDetails || []).map(f => `${f.name} (${f.cat}): ${f.a}%/${f.b}%`).join('; ')
         };
+        // reportStatus explique dans l'email pourquoi le rapport est (ou n'est pas) joint
+        payload.reportStatus = (report && report.status) || 'not_generated';
+        if (report && report.b64) {
+          payload.reportB64 = report.b64;
+          payload.reportFileName = report.fileName;
+          payload.reportStatus = 'attached';
+        }
         fetch(SHEET_LOG_URL, {
           method: 'POST',
           mode: 'no-cors', // Apps Script ne renvoie pas d'en-têtes CORS ; on n'a pas besoin de lire la réponse
@@ -3191,7 +3200,8 @@
         const edge = a - b > 10 ? nA : b - a > 10 ? nB : 'Equal';
         return { name: f.name, cat: CATS[f.cat].label, a, b, edge };
       });
-      logSubmission(nA, nB, feA, feB, sA, sB, factorDetails);
+      // L'envoi vers Google Sheets (+ email avec le rapport en pièce jointe)
+      // se fait dans sendReportRequest(), une fois le rapport généré.
       sendReportRequest(nA, nB, sA, sB, feA, feB);
     }
 
@@ -3258,9 +3268,14 @@
         document.getElementById('btn-download-pdf').style.display = 'inline-block';
         document.getElementById('pdf-popup-notice').style.display = 'block';
 
+        // Enregistre la soumission + joint le rapport PowerPoint à l'email
+        logSubmissionWithReport(nA, nB, feA, feB, sA, sB, factorDetails);
+
       } catch (err) {
         box.className = 'ai-box error';
         box.innerHTML = `⚠ Could not load analysis: <em>${err.message}</em>`;
+        // Le rapport a échoué : on enregistre quand même la soumission, sans pièce jointe
+        logSubmission(nA, nB, feA, feB, sA, sB, factorDetails, { status: 'analysis_failed: ' + err.message });
         document.getElementById('btn-download-pdf').style.display = 'none';
         document.getElementById('pdf-popup-notice').style.display = 'none';
       } finally {
@@ -3323,7 +3338,45 @@
     // Chaque diapo : logo + « Empowering people & organisations » en haut à
     // gauche, « Prepared for … — date » et numéro de page en bas.
     // =========================================================================
-    function downloadReportPPT() {
+    // Construit le rapport PowerPoint en base64 puis l'envoie avec la soumission.
+    // Si la construction échoue, la soumission part quand même, sans pièce jointe.
+    async function logSubmissionWithReport(nA, nB, feA, feB, sA, sB, factorDetails) {
+      let report = null;
+      try {
+        await ensurePptxLib();
+        if (typeof PptxGenJS === 'undefined') {
+          report = { status: 'ppt_library_not_loaded' };
+        } else {
+          const built = buildReportPPT();
+          if (built) {
+            const b64 = await built.pptx.write({ outputType: 'base64' });
+            report = { b64, fileName: built.fileName };
+          } else {
+            report = { status: 'ppt_build_returned_nothing' };
+          }
+        }
+      } catch (e) {
+        report = { status: 'ppt_build_error: ' + (e && e.message ? e.message : e) };
+      }
+      logSubmission(nA, nB, feA, feB, sA, sB, factorDetails, report);
+    }
+
+    // Si PptxGenJS n'a pas été chargé (CDN bloqué), on essaie une 2e source.
+    function ensurePptxLib() {
+      if (typeof PptxGenJS !== 'undefined') return Promise.resolve();
+      return new Promise(resolve => {
+        const sc = document.createElement('script');
+        sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js';
+        sc.onload = () => resolve();
+        sc.onerror = () => resolve();
+        document.head.appendChild(sc);
+        setTimeout(resolve, 10000);
+      });
+    }
+
+    // Bouton « Download as PowerPoint »
+    async function downloadReportPPT() {
+      await ensurePptxLib();
       if (!lastReport) {
         alert(LANG === 'fr'
           ? "Générez d'abord l'analyse, puis vous pourrez la télécharger en PowerPoint."
@@ -3336,6 +3389,14 @@
           : 'The PowerPoint module could not load. Check your connection and try again.');
         return;
       }
+      const built = buildReportPPT();
+      return built.pptx.writeFile({ fileName: built.fileName });
+    }
+
+    // Construit la présentation (sans la télécharger) : utilisée pour le bouton
+    // de téléchargement ET pour la pièce jointe de l'email.
+    function buildReportPPT() {
+      if (!lastReport || typeof PptxGenJS === 'undefined') return null;
 
       const { nA, nB, feA, feB, sA, sB, factorDetails, topStrengths } = lastReport;
       const t = T();
@@ -3560,7 +3621,7 @@
       }
 
       const fileName = `Negotiation-Report-${nA}-vs-${nB}`.replace(/\s+/g, '-') + '.pptx';
-      return pptx.writeFile({ fileName });
+      return { pptx, fileName };
     }
 
     function downloadReportPDF() {
